@@ -1,0 +1,7 @@
+# Evaluation framework dependencies
+regex>=2023.10.3
+json_repair>=0.25.2
+word2number>=1.1
+cn2an>=0.5.22
+sympy>=1.12
+latex2sympy2>=1.9.1
