@@ -5,7 +5,7 @@ This module provides functionality for evaluating array-type answers
 with support for ordered, unordered, and subset comparisons.
 """
 
-from typing import List, Union
+from typing import List
 
 try:
     from eval_numeral import is_digit, numeral_equal

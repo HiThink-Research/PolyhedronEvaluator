@@ -9,8 +9,10 @@ supporting both single and multiple correct answer scenarios.
 
 import re
 from typing import List, Optional, Tuple
+from functools import lru_cache
 
 
+@lru_cache(maxsize=10000)
 def normalize_answer(answer: str) -> List[Optional[str]]:
     """
     Normalize multiple choice answer.
@@ -36,6 +38,7 @@ def normalize_answer(answer: str) -> List[Optional[str]]:
     return [option, text_answer]
 
 
+@lru_cache(maxsize=10000)
 def option_equal(pre: str, ref: str) -> bool:
     """
     Compare two multiple choice answers.
@@ -65,6 +68,7 @@ def option_equal(pre: str, ref: str) -> bool:
     else:
         return False
 
+@lru_cache(maxsize=10000)
 def multi_answers_MCQ(pre, ref):
     """
         Compare multiple choice questions with multiple correct answers.

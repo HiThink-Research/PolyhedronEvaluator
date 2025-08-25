@@ -11,8 +11,9 @@ from typing import List, Any
 import json_repair
 from word2number import w2n
 import cn2an
+from functools import lru_cache
 
-
+@lru_cache(maxsize=10000)
 def convert_word_number(text: str) -> str:
     """
     Convert word numbers (both Chinese and English) to Arabic numerals.

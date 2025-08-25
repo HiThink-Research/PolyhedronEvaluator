@@ -7,6 +7,7 @@ with normalization and word number conversion support.
 
 import re
 import string
+from functools import lru_cache
 
 try:
     from eval_utils import convert_word_number
@@ -14,6 +15,7 @@ except ImportError:
     from .eval_utils import convert_word_number
 
 
+@lru_cache(maxsize=10000)
 def remove_punctuation(text: str) -> str:
     """
     Remove Chinese and English punctuation from text.
@@ -37,6 +39,7 @@ def remove_punctuation(text: str) -> str:
     return cleaned_text
 
 
+@lru_cache(maxsize=10000)
 def nominal_equal(pre: str, ref: str) -> bool:
     """
     Compare two nominal answers with normalization.

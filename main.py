@@ -10,6 +10,7 @@ import json
 from typing import List, Optional, Union, Any
 
 import json_repair
+from functools import lru_cache
 
 try:
     from extract_answer import extract_answer
@@ -150,7 +151,7 @@ def parseArray(ref: str, pre: str) -> tuple[List[Any], List[Any]]:
         pre_t = list(pre_t.values())
     return ref_t, pre_t
 
-
+@lru_cache(maxsize=10000)
 def eval_router(pre: str, ref: str, eval_type: Optional[str] = None) -> bool:
     """
     Route evaluation to appropriate evaluator based on type.
@@ -297,7 +298,7 @@ def get_n_elements(arr: List[Any], n: int, last: bool = True, fill_value: Any = 
     return last_n
 
 
-def compute_score(solution_str: str, ground_truth: str, eval_type_text: str):
+def compute_score(solution_str: str, ground_truth: str, eval_type_text = None) -> float:
     """
     Compute score for RL training.
     
@@ -313,7 +314,10 @@ def compute_score(solution_str: str, ground_truth: str, eval_type_text: str):
         ground_truth = extract_answer(ground_truth.split("/think>")[-1].strip())[-1]
 
     # Calculate number of questions based on eval types
-    eval_type = re.split(r'[,，]', eval_type_text)
+    if eval_type_text == None or eval_type_text == "":
+        eval_type = [None]
+    else:
+        eval_type = re.split(r'[,，]', eval_type_text)
     qtype_len = len(eval_type)
 
     try:
@@ -361,10 +365,11 @@ def compute_score(solution_str: str, ground_truth: str, eval_type_text: str):
     except Exception as e:
         res_score = 0.0
 
+    # print("extract_answer:", pred_res, "ground_truth:", ground_truth, res_score)
     return res_score
 
 
-def evaluation(prediction: str, ground_truth: str, eval_type_text: str) -> bool:
+def evaluation(prediction: str, ground_truth: str, eval_type_text = None) -> bool:
     """
     Evaluate LLM prediction with strict binary result.
     
@@ -383,43 +388,45 @@ if __name__ == "__main__":
     import time
     start_time = time.time()
 
-    print(eval_router("[['a','b'], ['c', 'd'], ['d', 'e']]", "[['b','a'], ['d', 'c'],['d', 'e']]", eval_type="ooa_nominal"))
+    print(eval_router("1/3", "33.33%"))  # True
+    print(eval_router("1/3", "33.33%", eval_type="nominal"))  # False
+    print(eval_router("[['a','b'], ['c', 'd'], ['d', 'e']]", "[['b','a'], ['d', 'c'],['d', 'e']]", eval_type="ooa_nominal"))  # False
 
     solution_str = "xixihh\\boxed{[[\"6\", \"7\"], [\"8\", \"9\"], [\"7\", \"9\"], [\"6\", \"9\"]]} \\boxed{A}\n$$"
     ground_truth = "[['6', '7'], ['8', '9'], ['7', '9'], ['6', '9']]====A"
     eval_type_text = "ooa_numeral,option"
 
-    print(compute_score(solution_str, ground_truth, eval_type_text))
+    print(compute_score(solution_str, ground_truth, eval_type_text))  # 1.0
 
     solution_str = "\\boxed{A, 12.5}\n$$"
     ground_truth = "A====125"
     eval_type_text = "option,nominal"
-    print(compute_score(solution_str, ground_truth, eval_type_text))
+    print(compute_score(solution_str, ground_truth, eval_type_text))  # 1.0 (as the eval_type of the second answer is nominal. If it is numeral, the score will be 0.5)
 
     pre = "\\boxed{老15，老二}"
     ref = "2，15"
-    print(compute_score(pre, ref, 'ordered array'))
-    print(compute_score(pre, ref, 'unordered array'))
+    print(compute_score(pre, ref, 'ordered array')) # 0.0
+    print(compute_score(pre, ref, 'unordered array')) # 1.0
 
     print("--------------------")
     pre = "\\boxed{护理学,经济学,音乐学,化学,土木工程}"
     ref = "化学,音乐学,土木工程,经济学,护理学\n"
-    print(compute_score(pre, ref, 'ordered array'))  # false
-    print(compute_score(pre, ref, 'unordered array'))  # true
+    print(compute_score(pre, ref, 'ordered array'))  # 0.0
+    print(compute_score(pre, ref, 'unordered array'))  # 1.0
 
     print("--------------------")
     pre = "sdfsdf\\boxed{王桂芝};\\boxed{张凯};\\boxed{张俊};\\boxed{张玲};sdfsdf"
     ref = "王桂芝,张凯,张玲,张俊\n"
-    print(compute_score(pre, ref, 'ordered array'))  # false
-    print(compute_score(pre, ref, 'unordered array'))  # true
+    print(compute_score(pre, ref, 'ordered array'))  # 0.0
+    print(compute_score(pre, ref, 'unordered array'))  # 1.0
 
     pre = "sdfsdf\\boxed{[[55, '刘莹', 1.602], [52, '何丽', 18], [53, '雷刚', 19], [54, '许婷婷', 17]]};sdfsdf"
     ref = "[[55, '刘莹', 1.60], [52, '何丽', 18], [53, '雷刚', 19], [54, '许婷婷', 17]]\n"
-    print(compute_score(pre, ref, 'ooa_nominal'))  # false
+    print(compute_score(pre, ref, 'ooa_nominal'))  # 0.0
 
     pre = "sdfsdf\\boxed{[[\"仓鼠\"],[\"仓鼠\", \"蝾螈\"],[\"仓鼠\", \"蝾螈\"],[\"仓鼠\"],[\"仓鼠\", \"蝾螈\"],[\"仓鼠\", \"乌龟\"],[\"蝾螈\", \"变色龙\"],[\"仓鼠\", \"蝾螈\"],[\"变色龙\"]]};sdfsdf"
     ref = "[['仓鼠'], ['仓鼠', '蝾螈'], ['仓鼠', '蝾螈'], ['仓鼠'], ['仓鼠', '蝾螈'], ['仓鼠', '乌龟'], ['蝾螈', '变色龙'], ['仓鼠', '蝾螈'], ['变色龙']]\n"
-    print(compute_score(pre, ref, 'oua_nominal'))  # true
+    print(compute_score(pre, ref, 'oua_nominal'))  # 1.0
     
     execution_time = time.time() - start_time
     print(f"Code execution time: {execution_time:.6f} seconds")

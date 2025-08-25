@@ -6,7 +6,6 @@ particularly from LaTeX boxed notation and various text formats.
 """
 
 import re
-from typing import Union, List
 
 
 def extract_answer(pred_str: str, flag: str = "boxed", last: bool = False) -> any:
@@ -87,4 +86,4 @@ def extract_answer(pred_str: str, flag: str = "boxed", last: bool = False) -> an
 if __name__ == "__main__":
     print(extract_answer("\\boxed{F. xxx}"))
     print(extract_answer("The first box: \\boxed{Answer: \\text{A}}; The second box: \\boxed{Remove text wrapper \\text{B}, \\frac{1}{4}}"))
-    print(extract_answer("No boxed"))
+    print(extract_answer("No boxed", last=True))

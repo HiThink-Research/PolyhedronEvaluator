@@ -11,6 +11,7 @@ import regex
 from math import isclose
 from typing import Union, List
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 
 from sympy.parsing.sympy_parser import parse_expr
 from sympy.parsing.latex import parse_latex
@@ -23,6 +24,7 @@ except ImportError:
     from .eval_utils import convert_word_number
 
 
+@lru_cache(maxsize=10000)
 def strip_string(string: str) -> str:
     """
     Strip and normalize mathematical expression strings.
@@ -172,6 +174,7 @@ def strip_string(string: str) -> str:
 
     return string
 
+@lru_cache(maxsize=10000)
 def _fix_fracs(string):
     substrs = string.split("\\frac")
     new_str = substrs[0]
@@ -203,6 +206,7 @@ def _fix_fracs(string):
     string = new_str
     return string
 
+@lru_cache(maxsize=10000)
 def _fix_a_slash_b(string):
     if len(string.split("/")) != 2:
         return string
@@ -223,6 +227,7 @@ def _fix_sqrt(string):
     _string = re.sub(r"\\sqrt(\w+)", r"\\sqrt{\1}", string)
     return _string
 
+@lru_cache(maxsize=10000)
 def parse_digits(num):
     num = regex.sub(",", "", str(num))
     try:
@@ -239,11 +244,13 @@ def parse_digits(num):
     return None
 
 
+@lru_cache(maxsize=10000)
 def is_digit(num):
     # paired with parse_digits
     return parse_digits(num) is not None
 
 
+@lru_cache(maxsize=10000)
 def extract_numbers(text: str) -> str:
     """从文本中提取所有数值（包括分数、小数）并以分号分隔"""
     # 匹配数字模式：整数、小数、分数、百分数等
@@ -276,6 +283,7 @@ def str_to_pmatrix(input_str):
     return ", ".join(pmatrix_list)
 
 
+@lru_cache(maxsize=10000)
 def symbolic_equal(a, b):
     def _parse(s):
         for f in [parse_latex, parse_expr, latex2sympy]:
@@ -341,6 +349,7 @@ def call_with_timeout(func, *args, timeout=3, **kwargs):
             return False
 
 
+@lru_cache(maxsize=10000)
 def math_equal(
     prediction: Union[bool, float, str],
     reference: Union[float, str],
@@ -575,8 +584,10 @@ def math_equal(
     return False
 
 
+@lru_cache(maxsize=10000)
 def numeral_equal(pre, ref):
-    pre, ref = strip_string(pre), strip_string(ref)
+    pre = str(parse_digits(pre)) if is_digit(pre) else strip_string(pre)
+    ref = str(parse_digits(ref)) if is_digit(ref) else strip_string(ref)
     eval_res = math_equal(pre, ref, timeout=True)
     if not eval_res:
         pre = extract_numbers(pre)
@@ -591,17 +602,18 @@ if __name__ == "__main__":
     import time
     start_time = time.time()
 
-    print(numeral_equal("25", "twenty-five"))
-    print(numeral_equal("答案是25", "二十五"))
-    print(numeral_equal(1/4, "零点二五"))
-    print(numeral_equal("老二", "老2"))
-    print(numeral_equal("零点二五", "1/4"))
-    print(numeral_equal("22.4 m", "22.4"))
-    print(numeral_equal("0.245", "24.5%"))
-    print(numeral_equal("24.5", "24.5%"))
-    print(numeral_equal("24.55", "24.5%"))
-    print(numeral_equal("答案是零点五加仑", "4/8加仑"))
-    print(numeral_equal("零点二五", "\\frac{1}{4}"))
+    print(numeral_equal("25", "twenty-five"))  # True
+    print(numeral_equal("答案是25", "二十五"))  # True
+    print(numeral_equal(1/4, "零点二五"))  # True
+    print(numeral_equal("老二", "老2"))  # True
+    print(numeral_equal("零点二五", "1/4"))  # True
+    print(numeral_equal("22.4 m", "22.4"))  # True
+    print(numeral_equal("0.245", "24.5%"))  # True
+    print(numeral_equal("24.5", "24.5%"))  # True
+    print(numeral_equal("24.55", "24.5%"))  # False
+    print(numeral_equal("1/3", "33.33%"))  # True
+    print(numeral_equal("答案是零点五加仑", "4/8加仑"))  # True
+    print(numeral_equal("零点二五", "\\frac{1}{4}"))  # True
 
     execution_time = time.time() - start_time
     print(f"代码执行时间: {execution_time:.6f} 秒")
