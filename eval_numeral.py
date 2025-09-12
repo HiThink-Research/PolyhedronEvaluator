@@ -102,7 +102,7 @@ def strip_string(string: str) -> str:
 
     # remove percentage
     string = string.replace("\\%", "")
-    string = string.replace("\%", "")
+    # string = string.replace("\%", "")
     string = string.replace("%", "")
     
     months = r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b"
@@ -253,6 +253,7 @@ def is_digit(num):
 @lru_cache(maxsize=10000)
 def extract_numbers(text: str) -> str:
     """从文本中提取所有数值（包括分数、小数）并以分号分隔"""
+    text = convert_word_number(text)
     # 匹配数字模式：整数、小数、分数、百分数等
     number_pattern = r'\d+\.?\d*\/?\d*\.?\d*%?'
     numbers = re.findall(number_pattern, text)
@@ -288,16 +289,17 @@ def symbolic_equal(a, b):
     def _parse(s):
         for f in [parse_latex, parse_expr, latex2sympy]:
             try:
-                return f(s.replace("\\\\", "\\"))
+                return f(s.replace("\\\\", "\\").replace("\\frac{", "+\\frac{"))
             except:
                 try:
                     return f(s)
                 except:
                     pass
         return s
-
+    # print(a,b)
     a = _parse(a)
     b = _parse(b)
+    # print(a,b)
 
     # direct equal
     try:
@@ -586,15 +588,17 @@ def math_equal(
 
 @lru_cache(maxsize=10000)
 def numeral_equal(pre, ref):
-    pre = str(parse_digits(pre)) if is_digit(pre) else strip_string(pre)
-    ref = str(parse_digits(ref)) if is_digit(ref) else strip_string(ref)
-    eval_res = math_equal(pre, ref, timeout=True)
+    pre_t = str(parse_digits(pre)) if is_digit(pre) else strip_string(pre)
+    ref_t = str(parse_digits(ref)) if is_digit(ref) else strip_string(ref)
+    # print(pre_t, ref_t)
+    eval_res = math_equal(pre_t, ref_t, timeout=True)
     if not eval_res:
-        pre = extract_numbers(pre)
-        if len(pre):
-            ref = extract_numbers(ref)
-            if len(ref):
-                eval_res = math_equal(pre, ref, timeout=True)
+        pre_t = extract_numbers(pre)
+        if len(pre_t):
+            ref_t = extract_numbers(ref)
+            if len(ref_t):
+                # print(pre_t, ref_t)
+                eval_res = math_equal(pre_t, ref_t, timeout=True)
     return eval_res
 
 
@@ -602,6 +606,7 @@ if __name__ == "__main__":
     import time
     start_time = time.time()
 
+    # print(numeral_equal('({2014}^{2012} + {2013}^{2013})^{2011} + {2012}^{{2014}^{2012} + {2013}^{2013} - 1} \\square 2011', "2"))  # False
     print(numeral_equal("25", "twenty-five"))  # True
     print(numeral_equal("答案是25", "二十五"))  # True
     print(numeral_equal(1/4, "零点二五"))  # True
@@ -610,10 +615,14 @@ if __name__ == "__main__":
     print(numeral_equal("22.4 m", "22.4"))  # True
     print(numeral_equal("0.245", "24.5%"))  # True
     print(numeral_equal("24.5", "24.5%"))  # True
-    print(numeral_equal("24.55", "24.5%"))  # False
+    print("F", numeral_equal("24.55", "24.5%"))  # False
     print(numeral_equal("1/3", "33.33%"))  # True
     print(numeral_equal("答案是零点五加仑", "4/8加仑"))  # True
     print(numeral_equal("零点二五", "\\frac{1}{4}"))  # True
+    print(numeral_equal("\\dfrac{5}{4}", "1\\frac{1}{4}"))  # True  支持假分数 和 带分数（mixed number）
+    print(numeral_equal("18;10", "18,10"))  # True
+    print(numeral_equal("18+10", "28"))  # True
+    print(numeral_equal("a=2,\\b=2", "2,2"))  # True
 
     execution_time = time.time() - start_time
     print(f"代码执行时间: {execution_time:.6f} 秒")

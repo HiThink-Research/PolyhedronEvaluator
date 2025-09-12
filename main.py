@@ -298,14 +298,14 @@ def get_n_elements(arr: List[Any], n: int, last: bool = True, fill_value: Any = 
     return last_n
 
 
-def compute_score(solution_str: str, ground_truth: str, eval_type_text = None) -> float:
+def compute_score(solution_str: str, ground_truth: str, eval_type = None) -> float:
     """
     Compute score for RL training.
     
     Args:
         solution_str: Complete model output with potential multiple answers
         ground_truth: Ground truth with potential multiple parts
-        eval_type_text: Comma-separated evaluation types
+        eval_type: Comma-separated evaluation types
         
     Returns:
         Float score between 0.0 and 1.0 (used as RL reward)
@@ -314,10 +314,10 @@ def compute_score(solution_str: str, ground_truth: str, eval_type_text = None) -
         ground_truth = extract_answer(ground_truth.split("/think>")[-1].strip())[-1]
 
     # Calculate number of questions based on eval types
-    if eval_type_text == None or eval_type_text == "":
+    if eval_type == None or eval_type == "":
         eval_type = [None]
     else:
-        eval_type = re.split(r'[,，]', eval_type_text)
+        eval_type = re.split(r'[,，]', eval_type)
     qtype_len = len(eval_type)
 
     try:
@@ -346,6 +346,7 @@ def compute_score(solution_str: str, ground_truth: str, eval_type_text = None) -
             pred_res = tmp
 
         pred_list = get_n_elements(pred_res, qtype_len)  # Get last qtype_len answers
+        # print(pred_res, pred_list, ref_list, eval_type)
         check_res = [eval_router(pred_list[ref_i], ref_v, eval_type[ref_i]) for ref_i, ref_v in enumerate(ref_list)]
         true_num = sum(check_res)
         
@@ -369,39 +370,49 @@ def compute_score(solution_str: str, ground_truth: str, eval_type_text = None) -
     return res_score
 
 
-def evaluation(prediction: str, ground_truth: str, eval_type_text = None) -> bool:
+def evaluation(prediction: str, ground_truth: str, eval_type = None) -> bool:
     """
     Evaluate LLM prediction with strict binary result.
     
     Args:
         prediction: Model's prediction
         ground_truth: Ground truth answer
-        eval_type_text: Evaluation type specification
+        eval_type: Evaluation type specification
         
     Returns:
         True if all parts are correct, False otherwise
     """
-    return False if compute_score(prediction, ground_truth, eval_type_text) < 1 else True
+    return False if compute_score(prediction, ground_truth, eval_type) < 1 else True
 
 
 if __name__ == "__main__":
     import time
     start_time = time.time()
 
+    print(evaluation("This is text. 最终答案\n\\[\n\\boxed{18}\\quad\\boxed{10}\n\\]\n", "18,10", eval_type="numeral"))  # True
+
+    # print(eval_router("({2014}^{2012} + {2013}^{2013})^{2011} + {2012}^{{2014}^{2012} + {2013}^{2013} - 1} \\square 2011", "2",eval_type="nominal"))
     print(eval_router("1/3", "33.33%"))  # True
     print(eval_router("1/3", "33.33%", eval_type="nominal"))  # False
     print(eval_router("[['a','b'], ['c', 'd'], ['d', 'e']]", "[['b','a'], ['d', 'c'],['d', 'e']]", eval_type="ooa_nominal"))  # False
 
     solution_str = "xixihh\\boxed{[[\"6\", \"7\"], [\"8\", \"9\"], [\"7\", \"9\"], [\"6\", \"9\"]]} \\boxed{A}\n$$"
     ground_truth = "[['6', '7'], ['8', '9'], ['7', '9'], ['6', '9']]====A"
-    eval_type_text = "ooa_numeral,option"
+    eval_type = "ooa_numeral,option"
 
-    print(compute_score(solution_str, ground_truth, eval_type_text))  # 1.0
+    print(compute_score(solution_str, ground_truth, eval_type))  # 1.0
+
+    solution_str = "xixihh\\boxed{({2014}^{2012} + {2013}^{2013})^{2011} + {2012}^{{2014}^{2012} + {2013}^{2013} - 1} \\square 2011} \\]"
+    ground_truth = "2"
+    eval_type = "numeral"
+    # print(extract_answer(solution_str))
+    # print(compute_score(solution_str, ground_truth, eval_type))  # 1.0
+    
 
     solution_str = "\\boxed{A, 12.5}\n$$"
     ground_truth = "A====125"
-    eval_type_text = "option,nominal"
-    print(compute_score(solution_str, ground_truth, eval_type_text))  # 1.0 (as the eval_type of the second answer is nominal. If it is numeral, the score will be 0.5)
+    eval_type = "option,nominal"
+    print(compute_score(solution_str, ground_truth, eval_type))  # 1.0 (as the eval_type of the second answer is nominal. If it is numeral, the score will be 0.5)
 
     pre = "\\boxed{老15，老二}"
     ref = "2，15"

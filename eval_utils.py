@@ -26,7 +26,8 @@ def convert_word_number(text: str) -> str:
     """
     # First step: Convert Chinese numbers to Arabic numerals using cn2an
     try:
-        text = cn2an.transform(text, "cn2an")
+        if len(text) < 300:
+            text = cn2an.transform(text, "cn2an")
     except Exception:
         pass  # If cn2an fails, skip this step
 
