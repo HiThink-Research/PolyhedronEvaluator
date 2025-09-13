@@ -10,8 +10,9 @@ import re
 import regex
 from math import isclose
 from typing import Union, List
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from functools import lru_cache
+import time, ctypes
 
 from sympy.parsing.sympy_parser import parse_expr
 from sympy.parsing.latex import parse_latex
@@ -348,6 +349,18 @@ def call_with_timeout(func, *args, timeout=3, **kwargs):
         try:
             return future.result(timeout=timeout)
         except TimeoutError:
+            future.cancel()
+            for thread in list(executor._threads):
+                while thread.is_alive():
+                    for e in [SystemExit, KeyboardInterrupt]:
+                        if thread.is_alive():
+                            tid = ctypes.c_long(thread.ident)
+                            if not ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(e)):
+                                raise ValueError("Invalid thread id")
+                            executor.shutdown(wait=False)
+                            time.sleep(0.1)
+                        else:
+                            break
             return False
 
 
@@ -603,7 +616,6 @@ def numeral_equal(pre, ref):
 
 
 if __name__ == "__main__":
-    import time
     start_time = time.time()
 
     # print(numeral_equal('({2014}^{2012} + {2013}^{2013})^{2011} + {2012}^{{2014}^{2012} + {2013}^{2013} - 1} \\square 2011', "2"))  # False
@@ -620,6 +632,7 @@ if __name__ == "__main__":
     print(numeral_equal("答案是零点五加仑", "4/8加仑"))  # True
     print(numeral_equal("零点二五", "\\frac{1}{4}"))  # True
     print(numeral_equal("\\dfrac{5}{4}", "1\\frac{1}{4}"))  # True  支持假分数 和 带分数（mixed number）
+    print(numeral_equal("\\dfrac{1}{5}", "1:5"))  # True  支持假分数 和 带分数（mixed number）
     print(numeral_equal("18;10", "18,10"))  # True
     print(numeral_equal("18+10", "28"))  # True
     print(numeral_equal("a=2,\\b=2", "2,2"))  # True
