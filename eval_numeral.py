@@ -606,9 +606,9 @@ def numeral_equal(pre, ref):
     # print(pre_t, ref_t)
     eval_res = math_equal(pre_t, ref_t, timeout=True)
     if not eval_res:
-        pre_t = extract_numbers(pre)
+        pre_t = extract_numbers(str(pre))
         if len(pre_t):
-            ref_t = extract_numbers(ref)
+            ref_t = extract_numbers(str(ref))
             if len(ref_t):
                 # print(pre_t, ref_t)
                 eval_res = math_equal(pre_t, ref_t, timeout=True)

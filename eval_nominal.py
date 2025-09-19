@@ -70,7 +70,8 @@ def nominal_equal(pre: str, ref: str) -> bool:
 
 
 if __name__ == "__main__":
-    print(nominal_equal("F. 23", "F"))
-    print(nominal_equal("a\n ", "(A)"))
-    print(nominal_equal("老3", "老三"))
-    print(nominal_equal("小明妈妈", "小明"))
+    print(nominal_equal("F. 23", "F"))          # False
+    print(nominal_equal("a\n ", "(A)"))         # True
+    print(nominal_equal("老3", "老三"))          # True
+    print(nominal_equal("小明妈妈", "小明"))     # False
+    print(nominal_equal("小明", "小明妈妈"))     # False
